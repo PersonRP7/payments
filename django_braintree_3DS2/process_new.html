@@ -1,0 +1,91 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<!-- Load the client component. -->
+<script src='https://js.braintreegateway.com/web/3.69.0/js/client.min.js'></script>
+
+<!-- Load the drop in component -->
+<script src='https://js.braintreegateway.com/web/dropin/1.25.0/js/dropin.min.js'></script>
+
+<!-- Load the 3D Secure component. -->
+<script src='https://js.braintreegateway.com/web/3.69.0/js/three-d-secure.min.js'></script>
+
+<form action="." method="POST" id="payment-form">
+    {% csrf_token %}
+    <section>
+        <label for="amount">
+        <span>Amount</span>
+        <input id="amount" name="amount" type="tel" min="1" placeholder="Amount">
+        </label>
+
+        <!-- braintree div -->
+        <div id="bt-dropin"></div>
+
+    </section>
+
+    <input type="hidden" id="nonce" name="payment_method_nonce" value="" />
+    <button class="button" type="submit" id="submit-button">Send Transaction</button>
+</form>
+
+{% endblock content %}
+
+{% block script %}
+    <script>
+
+        var dropin;
+
+        function setupDropin()
+        {
+            return braintree.dropin.create({
+                authorization: "{{ client_token }}",
+                container: '#bt-dropin',
+                threeDSecure: true
+            })
+        }
+
+        function onFetchClientToken()
+        {
+            return setupDropin().then(function(instance) {
+                dropin = instance
+            }).catch(function (err) {
+                console.error(err);
+            })
+        }
+
+        onFetchClientToken()
+        var form = document.querySelector('#payment-form');
+
+        form.addEventListener('submit', function (event) {
+            event.preventDefault();
+            dropin.requestPaymentMethod({
+                threeDSecure: {
+                    amount: '1000.00',
+                    email: 'some_email@email.com',
+                    billingAddress: {
+                        givenName: "Person",
+                        surname: "Personius",
+                        phoneNumber: "8101234567",
+                        streetAddress: "555 Smith St.",
+                        extendedAddress: "#5",
+                        locality: "Oakland",
+                        region: "CA",
+                        postalCode: "12345",
+                        countryCodeAlpha2: "US"
+                    }
+                }
+            }, function(err, payload) {
+                if (err) {
+                    console.error(err)
+                    return;
+                }
+                // send nonce and verification data to your server
+                document.getElementById('nonce').value = payload.nonce;
+                // submit form
+                document.getElementById('payment-form').submit();
+            })
+        })
+
+
+    </script>
+{% endblock script %}
